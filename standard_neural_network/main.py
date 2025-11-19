@@ -22,21 +22,25 @@ def run():
     print("========== FINISHED MODEL TESTING ==========\n")
 
     print("========== STARTING VISUALIZATION ==========")
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
     # Training loss
-    plt.plot(range(len(model.training_losses)), model.training_losses, marker="o", linestyle="-")
-    plt.title("Multi-layer Perceptron Loss Curve")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.grid(True)
-    plt.show()
+    axes[0].plot(range(len(model.training_losses)), model.training_losses, marker="o", linestyle="-")
+    axes[0].set_title("Multi-layer Perceptron Loss Curve")
+    axes[0].set_xlabel("Epoch")
+    axes[0].set_ylabel("Loss")
+    axes[0].grid(True)
 
     # Prediction VS True values
     predictions = model.predict(X_test)
-    plt.scatter(y_test, predictions, alpha=0.5, color="blue", edgecolors="k")
-    plt.title("Comparison of Predicted and True Magnitude Values")
-    plt.xlabel("True Magnitude")
-    plt.ylabel("Predicted Magnitude")
-    plt.grid(True)
+    axes[1].scatter(y_test, predictions, alpha=0.5, color="blue", edgecolors="k")
+    axes[1].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
+    axes[1].set_title("Comparison of Predicted and True Magnitude Values")
+    axes[1].set_xlabel("True Magnitude")
+    axes[1].set_ylabel("Predicted Magnitude")
+    axes[1].grid(True)
+
+    plt.tight_layout()
     plt.show()
 
     print("========== FINISHED VISUALIZATION ==========\n")

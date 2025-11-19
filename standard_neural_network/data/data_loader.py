@@ -34,6 +34,10 @@ class DataLoader:
 
         self.__cleaned_data = self.__cleaned_data.dropna()
         print(f"Rows after removing missing values: {len(self.__cleaned_data)}")
+
+        self.__cleaned_data = self.__cleaned_data[self.__cleaned_data[self.target_feature] >= 0]
+        print(f"Rows after removing negative magnitudes: {len(self.__cleaned_data)}")
+
         print(f"Columns after cleaning: {self.__cleaned_data.columns.tolist()}")
 
         return self
@@ -56,7 +60,6 @@ class DataLoader:
         self.y = self.y.to_numpy()
 
         return self
-
 
     def create_train_test_split(self, test_split=0.2, random_state=42):
         if self.X is None or self.y is None:
