@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder
 
 
 class DataLoader:
@@ -47,8 +47,8 @@ class DataLoader:
 
         self.__transformer = ColumnTransformer(
             transformers=[
-                ("num", StandardScaler(), self.X.select_dtypes(include=["int64", "float64"]).columns.tolist()), # Scale numeric columns
-                ("cat", OneHotEncoder(handle_unknown="ignore"), self.X.select_dtypes(include=["object"]).columns.tolist()) # One-hot encode the strings
+                ("num", StandardScaler(), self.X.select_dtypes(include=["int64", "float64"]).columns.tolist()),
+                ("cat_ord", OrdinalEncoder(), ["state"])
             ]
         )
 
