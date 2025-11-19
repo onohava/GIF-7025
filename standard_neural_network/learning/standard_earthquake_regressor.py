@@ -7,7 +7,7 @@ class StandardEarthquakeRegressor(nn.Module):
     def __init__(self, input_dimensions, learning_rate):
         super().__init__()
 
-        # Multi-layer perceptron architecture
+        # Multi-layer Perceptron architecture
         self.model = nn.Sequential(
             nn.Linear(input_dimensions, 64),
             nn.ReLU(),
@@ -15,9 +15,9 @@ class StandardEarthquakeRegressor(nn.Module):
             nn.ReLU(),
             nn.Linear(32, 1)
         )
-
         self.criterion = nn.MSELoss()
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.training_losses = []
 
     def forward(self, x):
         return self.model(x)
@@ -35,6 +35,8 @@ class StandardEarthquakeRegressor(nn.Module):
 
             loss.backward()
             self.optimizer.step()
+
+            self.training_losses.append(loss.item())
             
             print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
     
