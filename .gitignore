@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+<<<<<<< HEAD
+=======
+
+# Remove data files
+*.parquet
+*.csv
+>>>>>>> c767f5db6505d12e396128ea60c8d12d80245fd5
