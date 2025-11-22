@@ -1,6 +1,5 @@
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score
 
 from data_reader import DataReader
 from data_writer import DataWriter
@@ -14,12 +13,13 @@ def main_process():
     DataWriter.write()
     X_train, y_train, X_test, y_test, _ = DataReader.load_and_prep_data()
 
-    rf = RandomForestClassifier()
+    rf = RandomForestRegressor()
 
     best_rf = grid_optimisation(rf, X_train, y_train)
 
     y_pred = best_rf.predict(X_test)
-    print("Test Accuracy:", accuracy_score(y_test, y_pred))
+
+    print("R2:", r2_score(y_test, y_pred))
 
 
 if __name__ == "__main__":

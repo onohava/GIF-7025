@@ -57,4 +57,4 @@ MOCK_CSV_DATA = """date,significance,magnitude,longitude,latitude,depth,state_Al
 1990-01-01 07:56:01,0.07,0.14,0.25,0.40,0.07,0,0,1,0
 """
 
-DATA_FILEPATH = 'data/random_forest'
+DATA_FILEPATH = 'data/random_forest.parquet'
