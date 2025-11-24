@@ -1,78 +1,45 @@
+# model implementation inspired by paper: An attention-based LSTM network for large earthquake prediction (doi: 10.1016/j.soildyn.2022.107663)
+
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+class Attention(nn.Module):
+    def __init__(self, hidden_size):
+        super(Attention, self).__init__()
+        self.attention_weights = nn.Linear(hidden_size, 1, bias=True)
+
+    def forward(self, lstm_output):
+        scores = self.attention_weights(lstm_output)
+        probs = F.softmax(scores, dim=1)
+
+        weighted = lstm_output * probs
+        context_vector = torch.sum(weighted, dim=1)
+        return context_vector, probs
+
 
 class LSTMModel(nn.Module):
-    def __init__(self, input_size, hidden_size_1, hidden_size_2, dense_size, output_size, dropout_p=0.2):
-        super(LSTMModel, self).__init__()
+    def __init__(self, input_size, hidden_size, dense_size_1, dense_size_2, output_size, dropout_p=0.2):
+        super().__init__()
 
-        self.lstm1 = nn.LSTM(
+        self.lstm = nn.LSTM(
             input_size,
-            hidden_size_1,
+            hidden_size,
             batch_first=True,
         )
-        self.dropout1 = nn.Dropout(dropout_p)
 
+        self.attention = Attention(hidden_size)
+        self.leaky_relu = nn.LeakyReLU(0.01)
 
-        self.lstm2 = nn.LSTM(
-            hidden_size_1,
-            hidden_size_2,
-            batch_first=True,
-        )
-        self.dropout2 = nn.Dropout(dropout_p)
+        self.fc1 = nn.Linear(hidden_size, dense_size_1)
+        self.fc2 = nn.Linear(dense_size_1, dense_size_2)
+        self.fc3 = nn.Linear(dense_size_2, output_size)
 
-        self.fc1 = nn.Linear(hidden_size_2, dense_size)
-        self.relu = nn.ReLU()
-
-        self.fc2 = nn.Linear(dense_size, output_size)
 
     def forward(self, x):
-        out, _ = self.lstm1(x)
-        out = self.dropout1(out)
+        out, _ = self.lstm(x)
+        out, attention_weights = self.attention(out)
+        out = self.leaky_relu(self.fc1(out))
+        out = self.leaky_relu(self.fc2(out))
 
-        out, _ = self.lstm2(out)
-        out = self.dropout2(out[:, -1, :])
-
-        out = self.fc1(out)
-        out = self.relu(out)
-        out = self.fc2(out)
-
-        return out
-
-
-class BiLSTMModel(nn.Module):
-    def __init__(self, input_size, hidden_size_1, hidden_size_2, dense_size, output_size, dropout_p=0.2):
-        super(BiLSTMModel, self).__init__()
-
-        self.lstm1 = nn.LSTM(
-            input_size,
-            hidden_size_1,
-            batch_first=True,
-            bidirectional=True
-        )
-        self.dropout1 = nn.Dropout(dropout_p)
-
-
-        self.lstm2 = nn.LSTM(
-            hidden_size_1 * 2,
-            hidden_size_2,
-            batch_first=True,
-            bidirectional=True
-        )
-        self.dropout2 = nn.Dropout(dropout_p)
-
-        self.fc1 = nn.Linear(hidden_size_2 * 2, dense_size)
-        self.relu = nn.ReLU()
-
-        self.fc2 = nn.Linear(dense_size, output_size)
-
-    def forward(self, x):
-        out, _ = self.lstm1(x)
-        out = self.dropout1(out)
-
-        out, _ = self.lstm2(out)
-        out = self.dropout2(out[:, -1, :])
-
-        out = self.fc1(out)
-        out = self.relu(out)
-        out = self.fc2(out)
-
-        return out
+        return self.fc3(out)

@@ -4,7 +4,7 @@ import time
 
 
 def main_process():
-    LOOKBACK_VALUES_TO_TEST = [10]
+    LOOKBACK_VALUES_TO_TEST = [10, 25, 50]
 
     print("=========================================")
     print("   STEP 1: STARTING MODEL EXPERIMENTS   ")
@@ -32,7 +32,7 @@ def main_process():
             continue
 
     print("\n=========================================")
-    print("           ALL EXPERIMENTS FINISHED           ")
+    print("           ALL EXPERIMENTS FINISHED         ")
     print("=========================================")
 
     print("\n=========================================")

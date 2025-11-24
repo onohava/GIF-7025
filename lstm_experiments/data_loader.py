@@ -1,66 +1,60 @@
 import pandas as pd
 import numpy as np
+import torch
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split  # You'll need this import
+from sklearn.cluster import KMeans
 
 
-# Assume this class is in 'data_loader.py'
 class EarthQuakeDataLoader:
-
     @staticmethod
-    def _prepare_data(filepath):
-        df = pd.read_csv(filepath)
-        df.drop_duplicates(keep='first', inplace=True)
-        df = df[df['magnitudo'] > 4]
+    def _feature_engineering(df, n_clusters=5):
+        # 1. Create Timestamp feature (seconds)
+        if 'date' in df.columns:
+            df['dt_obj'] = pd.to_datetime(df['date'], format='mixed')
+            df['timestamp'] = df['dt_obj'].astype('int64') // 10 ** 9
 
-        df['date'] = pd.to_datetime(df['date'], format='mixed')
-        df = df.set_index('date').sort_index()
-        df = df.drop(columns=['time', 'place', 'status', 'data_type'])
-        df = df.rename(columns={'magnitudo': 'magnitude'})
-        df = pd.get_dummies(df, columns=['state'])
+        # 2. Create Location Cluster feature using K-Means (Latitude & Longitude)
+        print(f"Clustering locations into {n_clusters} regions...")
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        df['location_cluster'] = kmeans.fit_predict(df[['latitude', 'longitude']])
 
-        print(f"Dataset Length: {len(df)}")
         return df
 
     @staticmethod
-    def _create_sequences(df, all_features, target_col, lookback):
-        X, y = [], []
+    def load_and_prep_data(filepath, lookback=1, test_split=0.2, n_clusters=5):
+        df = pd.read_csv(filepath)
+        df = df[df['magnitudo'] > 5.0].copy()
 
-        feature_data = df[all_features].values
-        target_data = df[target_col].values
+        # Feature Engineering
+        df = EarthQuakeDataLoader._feature_engineering(df, n_clusters)
 
-        for i in range(len(feature_data) - lookback):
-            X.append(feature_data[i:(i + lookback)])
-            y.append(target_data[i + lookback])
+        # Select features specified in the article:
+        # "Location cluster, depth, magnitude, and timestamp"
+        feature_cols = ['location_cluster', 'depth', 'magnitudo', 'timestamp']
+        data = df[feature_cols].values
 
-        return np.array(X), np.array(y)
+        # Scaling (MinMax 0-1)
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        data_scaled = scaler.fit_transform(data)
 
-    @staticmethod
-    def load_and_prep_data(filepath, lookback, test_split=0.2):
-        df = EarthQuakeDataLoader._prepare_data(filepath)
+        # Split into Train/Test
+        train_size = int(len(data) * (1 - test_split))
+        train_data = data_scaled[:train_size]
+        test_data = data_scaled[train_size:]
 
-        all_features = list(df.columns)
-        target_col = 'magnitude'
-        num_features = len(all_features)
+        # Create Sequences (t-1 predicts t)
+        # Target is magnitude (index 2 in our feature_cols list)
+        target_idx = 2
 
-        train_df, test_df = train_test_split(df, test_size=test_split, shuffle=False)
-        scaler = MinMaxScaler()
+        def create_sequences(dataset, lookback):
+            X, y = [], []
+            for i in range(len(dataset) - lookback):
+                X.append(dataset[i:i + lookback])
+                y.append(dataset[i + lookback, target_idx])
+            return np.array(X), np.array(y)
 
-        train_df_scaled = train_df.copy()
-        test_df_scaled = test_df.copy()
+        X_train, y_train = create_sequences(train_data, lookback)
+        X_test, y_test = create_sequences(test_data, lookback)
 
-        train_df_scaled[all_features] = scaler.fit_transform(train_df[all_features])
-
-        test_df_scaled[all_features] = scaler.transform(test_df[all_features])
-
-        X_train, y_train = EarthQuakeDataLoader._create_sequences(
-            train_df_scaled, all_features, target_col, lookback
-        )
-        X_test, y_test = EarthQuakeDataLoader._create_sequences(
-            test_df_scaled, all_features, target_col, lookback
-        )
-
-        print(f"Train shapes: X={X_train.shape}, y={y_train.shape}")
-        print(f"Test shapes: X={X_test.shape}, y={y_test.shape}")
-
-        return X_train, y_train, X_test, y_test, num_features
+        print(f"Data Loaded. Train Shape: {X_train.shape}, Test Shape: {X_test.shape}")
+        return X_train, y_train, X_test, y_test, len(feature_cols), scaler

@@ -4,13 +4,12 @@ import argparse
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-from constants import *
+import torch
+import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-
-import torch
-from model import LSTMModel, BiLSTMModel
-
+from constants import *
+from model import LSTMModel
 from data_loader import EarthQuakeDataLoader
 
 
@@ -18,23 +17,31 @@ def create_summary_plots(lookback_values, save_dir):
     results = []
 
     for lb in lookback_values:
-        for model_type in ['lstm', 'bilstm']:
-            model_name = f'{model_type}_model_lb{lb}'
-            history_file = os.path.join(MODEL_SAVE_DIR, model_name, f'{model_name}_history.json')
+        model_name = f'lstm_model_lb{lb}'
+        history_file = os.path.join(MODEL_SAVE_DIR, model_name, f'{model_name}_history.json')
 
-            with open(history_file, 'r') as f:
-                history = json.load(f)
+        if not os.path.exists(history_file):
+            print(f"Warning: History file not found for {model_name}")
+            continue
 
-            results.append({
-                'Model Type': 'Bi-LSTM' if model_type == 'bilstm' else 'LSTM',
-                'Lookback': lb,
-                'Model': f"{'Bi-LSTM' if model_type == 'bilstm' else 'LSTM'} (LB={lb})",
-                'Best Validation Loss': history['best_val_loss'],
-                'Training Time (sec)': history['training_time_sec']
-            })
+        with open(history_file, 'r') as f:
+            history = json.load(f)
+
+        results.append({
+            'Model Type': 'LSTM',
+            'Lookback': lb,
+            'Model': f"LSTM (LB={lb})",
+            'Best Validation Loss': history['best_val_loss'],
+            'Training Time (sec)': history['training_time_sec']
+        })
+
+    if not results:
+        print("No results found to plot.")
+        return
 
     df_results = pd.DataFrame(results)
 
+    # Plot 1: Validation Loss
     plt.figure(figsize=(14, 7))
     sns.barplot(
         data=df_results,
@@ -54,6 +61,7 @@ def create_summary_plots(lookback_values, save_dir):
     print(f"Saved performance summary plot to {save_path_loss}")
     plt.close()
 
+    # Plot 2: Training Time
     plt.figure(figsize=(14, 7))
     sns.barplot(
         data=df_results,
@@ -74,19 +82,16 @@ def create_summary_plots(lookback_values, save_dir):
     plt.close()
 
 
-
-def plot_training_history(history_lstm_path, history_bilstm_path, save_path, lookback):
-    with open(history_lstm_path, 'r') as f:
-        history_lstm = json.load(f)
-    with open(history_bilstm_path, 'r') as f:
-        history_bilstm = json.load(f)
+def plot_training_history(history_lstm_path, save_path, lookback):
+    has_lstm = os.path.exists(history_lstm_path)
 
     plt.figure(figsize=(14, 7))
 
-    plt.plot(history_lstm['loss'], label='LSTM Train Loss', color='blue', linestyle='--')
-    plt.plot(history_lstm['val_loss'], label='LSTM Val Loss', color='blue', linewidth=2)
-    plt.plot(history_bilstm['loss'], label='Bi-LSTM Train Loss', color='orange', linestyle='--')
-    plt.plot(history_bilstm['val_loss'], label='Bi-LSTM Val Loss', color='orange', linewidth=2)
+    if has_lstm:
+        with open(history_lstm_path, 'r') as f:
+            history_lstm = json.load(f)
+        plt.plot(history_lstm['loss'], label='LSTM Train Loss', color='blue', linestyle='--')
+        plt.plot(history_lstm['val_loss'], label='LSTM Val Loss', color='blue', linewidth=2)
 
     plt.title(f'Model Loss Comparison (Lookback={lookback})', fontsize=16)
     plt.ylabel('Loss (Mean Squared Error)', fontsize=12)
@@ -99,46 +104,48 @@ def plot_training_history(history_lstm_path, history_bilstm_path, save_path, loo
     plt.close()
 
 
-def plot_predictions(model, model_path, X_test, y_test, model_name, save_path):
+def plot_predictions(model, model_path, X_test, y_test, model_name, save_path, target_scaler):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    if not os.path.exists(model_path):
+        print(f"Model file not found: {model_path}")
+        return
 
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()
 
-
-    predictions = []
     with torch.no_grad():
         X_test_tensor = torch.from_numpy(X_test).float().to(device)
-
         outputs = model(X_test_tensor)
-
         predictions = outputs.cpu().numpy()
 
-    mse = mean_squared_error(y_test, predictions)
-    mae = mean_absolute_error(y_test, predictions)
+    # convert scaled (0-1) values back to Real Magnitudes
+    predictions_real = target_scaler.inverse_transform(predictions)
+    y_test_real = target_scaler.inverse_transform(y_test)
+
+    # Calculate metrics on REAL values
+    mse = mean_squared_error(y_test_real, predictions_real)
+    mae = mean_absolute_error(y_test_real, predictions_real)
 
     plt.figure(figsize=(14, 7))
-    plt.plot(y_test, label='Actual Magnitude', color='black', alpha=0.7)
-    plt.plot(predictions, label='Predicted Magnitude', color='red', linestyle='--', alpha=0.8)
+    plt.plot(y_test_real, label='Actual Magnitude', color='black', alpha=0.7)
+    plt.plot(predictions_real, label='Predicted Magnitude', color='red', linestyle='--', alpha=0.8)
 
-    plt.title(f'{model_name} - Predictions vs. Actuals (Scaled Data)', fontsize=16)
-    plt.ylabel('Scaled Magnitude', fontsize=12)
+    plt.title(f'{model_name} - Real Magnitude Predictions', fontsize=16)
+    plt.ylabel('Earthquake Magnitude', fontsize=12)
     plt.xlabel('Test Sample Index', fontsize=12)
     plt.legend(fontsize=12, loc='upper right')
     plt.grid(True)
-    plt.savefig(save_path)
-    plt.grid(True)
 
-    plt.text(0.05, 0.95, f'MSE: {mse:.4f}\nMAE: {mae:.4f}',
+    plt.text(0.02, 0.95, f'MSE: {mse:.4f}\nMAE: {mae:.4f}',
              transform=plt.gca().transAxes,
              fontsize=12, verticalalignment='top',
-             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+             bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))
 
     plt.savefig(save_path)
     print(f"Saved prediction plot to {save_path}")
     plt.close()
-
 
 
 def main(lookback_value, run_summary=False, all_lookbacks=None):
@@ -154,34 +161,35 @@ def main(lookback_value, run_summary=False, all_lookbacks=None):
     LOOKBACK = lookback_value
 
     print(f"\nVisualizing models with LOOKBACK={LOOKBACK}...")
+
     data = EarthQuakeDataLoader.load_and_prep_data(DATA_FILEPATH, LOOKBACK, test_split=0.2)
-    X_train, y_train, X_test, y_test, num_features = data
+    X_train, y_train, X_test, y_test, num_features, target_scaler = data
 
     if X_test is None:
         print("Exiting visualization due to data loading error.")
         return
 
     model_name_lstm = f'lstm_model_lb{LOOKBACK}'
-    model_name_bilstm = f'bilstm_model_lb{LOOKBACK}'
 
     history_lstm_path = os.path.join(MODEL_SAVE_DIR, model_name_lstm, f'{model_name_lstm}_history.json')
-    history_bilstm_path = os.path.join(MODEL_SAVE_DIR, model_name_bilstm, f'{model_name_bilstm}_history.json')
     history_save_path = os.path.join(VISUALS_DIR, f'training_loss_comparison_lb{LOOKBACK}.png')
 
-    plot_training_history(history_lstm_path, history_bilstm_path, history_save_path, LOOKBACK)
+    plot_training_history(history_lstm_path, history_save_path, LOOKBACK)
 
-    lstm_model_path = os.path.join(MODEL_SAVE_DIR, model_name_lstm, f'{model_name_lstm}.pth')  # .pth file
+    lstm_model_path = os.path.join(MODEL_SAVE_DIR, model_name_lstm, f'{model_name_lstm}.pth')
     lstm_pred_save_path = os.path.join(VISUALS_DIR, f'lstm_predictions_lb{LOOKBACK}.png')
+
     lstm_model = LSTMModel(input_size=num_features, **MODEL_DIMS)
 
-    plot_predictions(lstm_model, lstm_model_path, X_test, y_test, f'LSTM (Lookback={LOOKBACK})', lstm_pred_save_path)
-
-    bilstm_model_path = os.path.join(MODEL_SAVE_DIR, model_name_bilstm, f'{model_name_bilstm}.pth')  # .pth file
-    bilstm_pred_save_path = os.path.join(VISUALS_DIR, f'bilstm_predictions_lb{LOOKBACK}.png')
-    bilstm_model = BiLSTMModel(input_size=num_features, **MODEL_DIMS)
-
-    plot_predictions(bilstm_model, bilstm_model_path, X_test, y_test, f'Bi-LSTM (Lookback={LOOKBACK})',
-                     bilstm_pred_save_path)
+    plot_predictions(
+        lstm_model,
+        lstm_model_path,
+        X_test,
+        y_test,
+        f'LSTM (Lookback={LOOKBACK})',
+        lstm_pred_save_path,
+        target_scaler
+    )
 
 
 if __name__ == "__main__":
