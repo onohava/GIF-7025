@@ -24,6 +24,7 @@ def train_model(model, train_loader, test_loader, model_name, lookback):
     history_file = os.path.join(save_path, f'{model_name_with_lb}_history.json')
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
     model.to(device)
 
     criterion = nn.MSELoss()
@@ -111,13 +112,14 @@ def main(lookback_value):
         input_size=num_features,
         **MODEL_DIMS
     )
+
     train_model(lstm_model, train_loader, test_loader, 'lstm_model', LOOKBACK)
 
-    bilstm_model = BiLSTMModel(
-        input_size=num_features,
-        **MODEL_DIMS
-    )
-    train_model(bilstm_model, train_loader, test_loader, 'bilstm_model', LOOKBACK)
+    # bilstm_model = BiLSTMModel(
+    #     input_size=num_features,
+    #     **MODEL_DIMS
+    # )
+    # train_model(bilstm_model, train_loader, test_loader, 'bilstm_model', LOOKBACK)
 
 
 if __name__ == "__main__":

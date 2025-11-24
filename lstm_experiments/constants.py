@@ -1,8 +1,8 @@
-DATA_FILEPATH = 'data/mock_data.parquet'
+DATA_FILEPATH = 'data/data.csv'
 MODEL_SAVE_DIR = 'models'
-VISUALS_DIR = 'visuals'
+VISUALS_DIR = 'figures'
 
-EPOCHS = 20
+EPOCHS = 100
 BATCH_SIZE = 32
 TEST_SPLIT = 0.2
 LEARNING_RATE = 0.001

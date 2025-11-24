@@ -125,7 +125,9 @@ def plot_predictions(model, model_path, X_test, y_test, model_name, save_path):
     plt.title(f'{model_name} - Predictions vs. Actuals (Scaled Data)', fontsize=16)
     plt.ylabel('Scaled Magnitude', fontsize=12)
     plt.xlabel('Test Sample Index', fontsize=12)
-    plt.legend(fontsize=12)
+    plt.legend(fontsize=12, loc='upper right')
+    plt.grid(True)
+    plt.savefig(save_path)
     plt.grid(True)
 
     plt.text(0.05, 0.95, f'MSE: {mse:.4f}\nMAE: {mae:.4f}',
