@@ -42,7 +42,7 @@ def main_process():
     visualization.main(lookback_value=0, run_summary=True, all_lookbacks=LOOKBACK_VALUES_TO_TEST)
 
     print("\n=========================================")
-    print("           PIPELINE FINISHED           ")
+    print("           PIPELINE FINISHED              ")
     print("=========================================")
 
 

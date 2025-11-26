@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class Attention(nn.Module):
     def __init__(self, hidden_size):
         super(Attention, self).__init__()
@@ -19,7 +20,7 @@ class Attention(nn.Module):
 
 
 class LSTMModel(nn.Module):
-    def __init__(self, input_size, hidden_size, dense_size_1, dense_size_2, output_size, dropout_p=0.2):
+    def __init__(self, input_size, hidden_size, dense_size_1, dense_size_2, output_size):
         super().__init__()
 
         self.lstm = nn.LSTM(

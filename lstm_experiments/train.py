@@ -13,7 +13,6 @@ from data_loader import EarthQuakeDataLoader
 from model import LSTMModel
 from constants import *
 
-
 def train_model(model, train_loader, test_loader, model_name, lookback, target_scaler):
     model_name_with_lb = f"{model_name}_lb{lookback}"
     print(f"\n--- Training {model_name_with_lb} ---")
@@ -33,8 +32,8 @@ def train_model(model, train_loader, test_loader, model_name, lookback, target_s
     print(f"Using device: {device}")
     model.to(device)
 
-    criterion = nn.HuberLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    criterion = nn.MSELoss()
+    optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
     history = {'loss': [], 'val_loss': []}
     best_val_loss = float('inf')
@@ -133,7 +132,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--lookback',
         type=int,
-        default=10,
+        default=1,
         help='The lookback period (sequence length) for the models.'
     )
     args = parser.parse_args()

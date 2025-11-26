@@ -111,33 +111,60 @@ def plot_predictions(model, model_path, X_test, y_test, model_name, save_path, t
         print(f"Model file not found: {model_path}")
         return
 
+    # 1. Load Model
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()
 
-    with torch.no_grad():
+    # 2. Handle Input Types (Fix for "even with input")
+    # X_test might be a Tensor (from DataLoader) or Numpy array
+    if isinstance(X_test, np.ndarray):
         X_test_tensor = torch.from_numpy(X_test).float().to(device)
+    else:
+        X_test_tensor = X_test.float().to(device)
+
+    # 3. Get Predictions
+    with torch.no_grad():
         outputs = model(X_test_tensor)
         predictions = outputs.cpu().numpy()
 
-    # convert scaled (0-1) values back to Real Magnitudes
+    # 4. Handle Target Types
+    if isinstance(y_test, torch.Tensor):
+        y_test = y_test.cpu().numpy()
+
+    # 5. Reshape for Scaler (N, 1)
+    if predictions.ndim == 1:
+        predictions = predictions.reshape(-1, 1)
+    if y_test.ndim == 1:
+        y_test = y_test.reshape(-1, 1)
+
+    # 6. Inverse Transform
     predictions_real = target_scaler.inverse_transform(predictions)
     y_test_real = target_scaler.inverse_transform(y_test)
 
-    # Calculate metrics on REAL values
+    # 7. Calculate Metrics
     mse = mean_squared_error(y_test_real, predictions_real)
     mae = mean_absolute_error(y_test_real, predictions_real)
 
+    # 8. Plotting (Corrected Scatter Logic)
     plt.figure(figsize=(14, 7))
-    plt.plot(y_test_real, label='Actual Magnitude', color='black', alpha=0.7)
-    plt.plot(predictions_real, label='Predicted Magnitude', color='red', linestyle='--', alpha=0.8)
 
-    plt.title(f'{model_name} - Real Magnitude Predictions', fontsize=16)
+    # Create an X-axis (just the index of the event 0, 1, 2...)
+    x_axis = range(len(y_test_real))
+
+    # Scatter needs (X, Y). We use 'marker' instead of 'linestyle'.
+    plt.scatter(x_axis, y_test_real, label='Actual Magnitude',
+                color='black', alpha=0.5, s=15)
+
+    plt.scatter(x_axis, predictions_real, label='Predicted Magnitude',
+                color='red', alpha=0.5, s=15, marker='x')
+
     plt.ylabel('Earthquake Magnitude', fontsize=12)
-    plt.xlabel('Test Sample Index', fontsize=12)
+    plt.xlabel('Seismic Events (Index)', fontsize=12)
     plt.legend(fontsize=12, loc='upper right')
-    plt.grid(True)
+    plt.grid(True, alpha=0.3)
 
+    # Add text box with metrics
     plt.text(0.02, 0.95, f'MSE: {mse:.4f}\nMAE: {mae:.4f}',
              transform=plt.gca().transAxes,
              fontsize=12, verticalalignment='top',
@@ -197,7 +224,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--lookback',
         type=int,
-        default=10,
+        default=1,
         help='The lookback period (sequence length) of the models to visualize.'
     )
     parser.add_argument(
