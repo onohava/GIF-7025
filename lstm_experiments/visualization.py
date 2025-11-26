@@ -111,48 +111,36 @@ def plot_predictions(model, model_path, X_test, y_test, model_name, save_path, t
         print(f"Model file not found: {model_path}")
         return
 
-    # 1. Load Model
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()
 
-    # 2. Handle Input Types (Fix for "even with input")
-    # X_test might be a Tensor (from DataLoader) or Numpy array
     if isinstance(X_test, np.ndarray):
         X_test_tensor = torch.from_numpy(X_test).float().to(device)
     else:
         X_test_tensor = X_test.float().to(device)
 
-    # 3. Get Predictions
     with torch.no_grad():
         outputs = model(X_test_tensor)
         predictions = outputs.cpu().numpy()
 
-    # 4. Handle Target Types
     if isinstance(y_test, torch.Tensor):
         y_test = y_test.cpu().numpy()
 
-    # 5. Reshape for Scaler (N, 1)
     if predictions.ndim == 1:
         predictions = predictions.reshape(-1, 1)
     if y_test.ndim == 1:
         y_test = y_test.reshape(-1, 1)
 
-    # 6. Inverse Transform
     predictions_real = target_scaler.inverse_transform(predictions)
     y_test_real = target_scaler.inverse_transform(y_test)
 
-    # 7. Calculate Metrics
     mse = mean_squared_error(y_test_real, predictions_real)
     mae = mean_absolute_error(y_test_real, predictions_real)
-
-    # 8. Plotting (Corrected Scatter Logic)
     plt.figure(figsize=(14, 7))
 
-    # Create an X-axis (just the index of the event 0, 1, 2...)
     x_axis = range(len(y_test_real))
 
-    # Scatter needs (X, Y). We use 'marker' instead of 'linestyle'.
     plt.scatter(x_axis, y_test_real, label='Actual Magnitude',
                 color='black', alpha=0.5, s=15)
 
