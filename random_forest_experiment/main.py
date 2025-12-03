@@ -13,14 +13,31 @@ def main_process():
     DataWriter.write()
     X_train, y_train, X_test, y_test, _ = DataReader.load_and_prep_data()
 
-    rf = RandomForestRegressor()
+    best_params = {
+    'bootstrap': False,
+    'criterion': 'squared_error',
+    'max_features': None,
+    'max_leaf_nodes': None,
+    'min_impurity_decrease': 0,
+    'min_samples_leaf': 2,
+    'min_samples_split': 2,
+    'n_estimators': 100
+    }
 
-    best_rf = grid_optimisation(rf, X_train, y_train)
+    # Create Random Forest with these parameters
+    rf = RandomForestRegressor(**best_params, random_state=42)
 
-    y_pred = best_rf.predict(X_test)
+    # --- OPTIMIZE HYPERPARAMS ---
+    # rf = grid_optimisation(rf, X_train, y_train)
 
+    # --- TRAIN THE MODEL ---
+    rf.fit(X_train, y_train)
+
+    # --- MAKE PREDICTIONS ---
+    y_pred = rf.predict(X_test)
+
+    # --- EVALUATE ---
     print("R2:", r2_score(y_test, y_pred))
-
 
 if __name__ == "__main__":
     main_process()
