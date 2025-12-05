@@ -2,10 +2,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import math 
+from standard_neural_network.configurations import TrainingConfiguration
 
 class StandardEarthquakeRegressor(nn.Module):
-    def __init__(self, input_dimensions, learning_rate):
+    def __init__(self, training_configuration: TrainingConfiguration, input_dimensions):
         super().__init__()
+        
+        self.__config = training_configuration
 
         # Multi-layer Perceptron architecture
         self.model = nn.Sequential(
@@ -15,18 +18,18 @@ class StandardEarthquakeRegressor(nn.Module):
             nn.ReLU(),
             nn.Linear(32, 1)
         )
-        self.criterion = nn.MSELoss()
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.criterion = self.__config.loss_function
+        self.optimizer = optim.Adam(self.parameters(), lr=self.__config.learning_rate)
         self.training_losses = []
 
     def forward(self, x):
         return self.model(x)
     
-    def train_model(self, X_train, y_train, epochs=50):
+    def train_model(self, X_train, y_train):
         X_train = torch.tensor(X_train.toarray() if hasattr(X_train, "toarray") else X_train, dtype=torch.float32)
         y_train = torch.tensor(y_train, dtype=torch.float32).view(-1,1)
 
-        for epoch in range(epochs):
+        for epoch in range(self.__config.number_of_epochs):
             self.train()
             self.optimizer.zero_grad()
 
@@ -47,11 +50,11 @@ class StandardEarthquakeRegressor(nn.Module):
         self.eval()
         with torch.no_grad():
             predictions = self(X_test)
-            mse_loss = self.criterion(predictions, y_test)
+            loss = self.criterion(predictions, y_test)
 
-        average_loss = math.sqrt(mse_loss.item())
+        average_loss = math.sqrt(loss.item())
         print(f"Average loss: {average_loss:.4f}")
-        return mse_loss.item()
+        return loss.item()
     
     def predict(self, X):
         X = torch.tensor(X.toarray() if hasattr(X, "toarray") else X, dtype=torch.float32)
