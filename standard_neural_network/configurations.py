@@ -19,9 +19,9 @@ class DataLoaderConfiguration():
 class TrainingConfiguration():
     loss_function: object = nn.HuberLoss()
     random_state: int = 42
-    number_of_epochs: int = 50
+    number_of_epochs: int = 5
     learning_rate: float = 1E-3
-    batch_size: int = 64
+    batch_size: int = 2048
 
 
 @dataclass
