@@ -52,7 +52,6 @@ class DataLoader:
         self.__transformer = ColumnTransformer(
             transformers=[
                 ("num", StandardScaler(), self.X.select_dtypes(include=["int64", "float64"]).columns.tolist()),
-                ("cat_ord", OrdinalEncoder(), ["state"])
             ]
         )
 
