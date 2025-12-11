@@ -105,3 +105,23 @@ filter_datasets = {
     datasets_paths[0]: filter_dataset,
     datasets_paths[1]: filter_dataset2
 }
+
+from sklearn.model_selection import train_test_split
+
+def split_X_y(X, y, train_frac=0.6, test_frac=0.2, eval_frac=0.2, random_state=42):
+    assert abs(train_frac + test_frac + eval_frac - 1.0) < 1e-9, "Fractions must sum to 1"
+
+    # Train vs temp
+    X_train, X_temp, y_train, y_temp = train_test_split(
+        X, y, train_size=train_frac, random_state=random_state, shuffle=True
+    )
+
+    # Compute eval fraction relative to temp
+    eval_frac_relative = eval_frac / (test_frac + eval_frac)
+
+    # Split temp into test and eval
+    X_test, X_eval, y_test, y_eval = train_test_split(
+        X_temp, y_temp, test_size=eval_frac_relative, random_state=random_state, shuffle=True
+    )
+
+    return X_train, X_test, X_eval, y_train, y_test, y_eval
