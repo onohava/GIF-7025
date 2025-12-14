@@ -1,5 +1,6 @@
 from typing import List, Dict, Callable, Any
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 # Constants
 min_magnitude = 0
@@ -10,39 +11,6 @@ min_latitude = -90
 max_latitude = 90
 min_depth = 0
 shuffle_seed = 42
-
-# Datasets paths
-datasets_paths = [
-    "Datasets/Earthquakes-180d.csv",
-    "Datasets/Earthquakes-1990-2023.csv"
-]
-
-remove_features = {
-    datasets_paths[0]: ["id", "url"],
-    datasets_paths[1]: ["time", "state", "status", "tsunami", "significance", "data_type"]
-}
-
-rename_features = {
-    datasets_paths[0]: {"mag": "magnitude", "depth_km": "depth", "time_utc": "date"},
-    datasets_paths[1]: {"magnitudo": "magnitude"}
-}
-
-datasets_filtered_paths = {dataset_path: dataset_path.replace(".csv", "-filtered.csv") for dataset_path in datasets_paths}
-
-datasets_filtered_subsets_sizes = {
-    datasets_paths[0]: {"18K": 18000},
-    datasets_paths[1]: {"1M": int(1e6), "2M": int(2e6), "3M": int(3e6)}
-}
-
-datasets_filtered_subsets_paths = {
-    dataset_path: {
-        subset_name: datasets_filtered_paths[dataset_path].replace(".csv", f"-{subset_name}.csv")
-        for subset_name in datasets_filtered_subsets_sizes[dataset_path].keys()
-    }
-    for dataset_path in datasets_paths
-}
-
-# ---------- Methods ----------
 
 def filter_dataset_feature(dataset, feature_name: str, min_value: float = float("-inf"), max_value: float = float("inf"), include_min_max: bool = True):
     if include_min_max:
@@ -70,21 +38,22 @@ def create_filtered_dataset(dataset, remove_features: List[str], rename_features
     dataset.drop_duplicates(inplace=True)
     dataset.reset_index(drop=True, inplace=True)
     return dataset
+def create_filtered_dataset2(dataset, remove_features: List[str], rename_features: Dict[str, str], filter_dataset: Callable = filter_dataset):
+    dataset.rename(columns=rename_features, inplace=True)
+    dataset.drop(columns=remove_features, inplace=True)
+    dataset.reset_index(drop=True, inplace=True)
+    return dataset
 
 def create_dataset(dataset, dataset_path: str, create_dataset: Callable, create_dataset_params: Dict[str, Any], load_dataset: bool = True, save_dataset: bool = True):
     print(f"Start of creation of dataset ({dataset_path})")
-    # Load dataset
     if load_dataset: dataset = pd.read_csv(dataset)
 
-    # Create dataset
     dataset = create_dataset(dataset, **create_dataset_params)
 
-    # Save dataset
     if save_dataset: dataset.to_csv(dataset_path, index = False)
 
     print(f"End of creation of dataset ({dataset_path})")
 
-    # Print dataset
     print_dataset(f"Dataset ({dataset_path.replace(".csv", "")})", dataset)
 
     return dataset
@@ -100,26 +69,14 @@ def filter_dataset2(dataset):
     dataset = filter_dataset(dataset)
     return dataset
 
-# Maps for dataset-specific filters
-filter_datasets = {
-    datasets_paths[0]: filter_dataset,
-    datasets_paths[1]: filter_dataset2
-}
-
-from sklearn.model_selection import train_test_split
-
 def split_X_y(X, y, train_frac=0.6, test_frac=0.2, eval_frac=0.2, random_state=42):
-    assert abs(train_frac + test_frac + eval_frac - 1.0) < 1e-9, "Fractions must sum to 1"
 
-    # Train vs temp
     X_train, X_temp, y_train, y_temp = train_test_split(
         X, y, train_size=train_frac, random_state=random_state, shuffle=True
     )
 
-    # Compute eval fraction relative to temp
     eval_frac_relative = eval_frac / (test_frac + eval_frac)
 
-    # Split temp into test and eval
     X_test, X_eval, y_test, y_eval = train_test_split(
         X_temp, y_temp, test_size=eval_frac_relative, random_state=random_state, shuffle=True
     )
