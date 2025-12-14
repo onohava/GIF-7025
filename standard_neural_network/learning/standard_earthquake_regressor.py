@@ -4,7 +4,7 @@ import torch.optim as optim
 import math 
 from standard_neural_network.configurations import TrainingConfiguration
 from torch.utils.data import DataLoader, TensorDataset
-
+from sklearn.metrics import mean_squared_error, r2_score
 
 class StandardEarthquakeRegressor(nn.Module):
     def __init__(self, training_configuration: TrainingConfiguration, input_dimensions):
@@ -65,8 +65,12 @@ class StandardEarthquakeRegressor(nn.Module):
             predictions = self(X_test)
             loss = self.criterion(predictions, y_test)
 
-        average_loss = math.sqrt(loss.item())
-        print(f"Average loss: {average_loss:.4f}")
+        rmse = mean_squared_error(y_test, predictions, squared=False)
+        r2 = r2_score(y_test, predictions)
+
+        print(f"RMSE: {rmse:.4f}")
+        print(f"R²: {r2:.4f}")
+
         return loss.item()
     
     def predict(self, X):
