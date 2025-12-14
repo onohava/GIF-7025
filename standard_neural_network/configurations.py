@@ -17,7 +17,7 @@ class DataLoaderConfiguration():
 
 @dataclass
 class TrainingConfiguration():
-    loss_function: object = nn.HuberLoss()
+    loss_function: object = nn.MSELoss()
     random_state: int = 42
     number_of_epochs: int = 5
     learning_rate: float = 1E-3
